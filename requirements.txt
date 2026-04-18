@@ -1,0 +1,36 @@
+# ─── LLM & RAG ───────────────────────────────────────────
+ollama
+langchain
+langchain-community
+langchain-chroma
+sentence-transformers
+chromadb
+
+# ─── PDF Processing ───────────────────────────────────────
+PyMuPDF
+pdfplumber
+pillow
+
+# ─── Backend ──────────────────────────────────────────────
+fastapi
+uvicorn[standard]
+python-multipart
+
+# ─── Data Validation ──────────────────────────────────────
+pydantic==2.7.1
+pydantic-settings
+
+# ─── Frontend ─────────────────────────────────────────────
+streamlit
+
+# ─── Translation & Voice ──────────────────────────────────
+deep-translator
+gTTS
+SpeechRecognition
+langdetect
+
+# ─── Utilities ────────────────────────────────────────────
+python-dotenv
+loguru
+httpx
+requests

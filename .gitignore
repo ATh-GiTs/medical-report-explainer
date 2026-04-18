@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# Environment Variables (NEVER commit this)
+.env
+
+# Data folders (too large for git)
+data/uploads/
+data/vectorstore/
+data/logs/
+
+# HuggingFace model cache
+.cache/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/
