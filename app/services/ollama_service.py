@@ -6,11 +6,21 @@ from app.core.logger import logger
 class OllamaService:
     """
     Handles all communication with the local Ollama server.
-    Uses MedGemma as primary model, falls back to Llama 3.2 if needed.
+    Uses dedicated models for different tasks:
+    - MedGemma  → medical reports & Q&A
+    - llama3.2-vision → prescription image reading
+    - llama3.2:3b → fast tasks (classification, translation)
     """
 
     def __init__(self):
         self.base_url = settings.ollama_base_url
+
+        # ─── Dedicated models per task ────────────────────
+        self.report_model = settings.ollama_report_model
+        self.vision_model = settings.ollama_vision_model
+        self.fast_model = settings.ollama_fast_model
+
+        # ─── Legacy fallback ──────────────────────────────
         self.model = settings.ollama_model
         self.fallback_model = settings.ollama_fallback_model
 
@@ -22,12 +32,24 @@ class OllamaService:
         except Exception:
             return False
 
-    def generate(self, prompt: str, system_prompt: str = "", use_fallback: bool = False) -> str:
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: str = "",
+        model_type: str = "report",
+        temperature: float = 0.3,
+    ) -> str:
         """
-        Send a prompt to Ollama and get a response.
-        Automatically falls back to llama3.2 if MedGemma fails.
+        Send a prompt to Ollama using the right model for the task.
+
+        model_type options:
+        - "report"  → MedGemma (best for medical Q&A)
+        - "fast"    → llama3.2:3b (best for classification, translation)
+        - "vision"  → llama3.2-vision (only for image tasks)
         """
-        model = self.fallback_model if use_fallback else self.model
+        # ─── Select correct model ─────────────────────────
+        model = self._select_model(model_type)
+        logger.info(f"Using model: {model} (task: {model_type})")
 
         payload = {
             "model": model,
@@ -35,36 +57,54 @@ class OllamaService:
             "system": system_prompt,
             "stream": False,
             "options": {
-                "temperature": 0.3,      # Lower = more factual (good for medical)
+                "temperature": temperature,
                 "top_p": 0.9,
                 "num_predict": 1024,
             }
         }
 
         try:
-            logger.info(f"Sending prompt to Ollama ({model})")
             response = httpx.post(
                 f"{self.base_url}/api/generate",
                 json=payload,
-                timeout=300.0  # Medical responses can be detailed
+                timeout=120.0
             )
             response.raise_for_status()
             result = response.json().get("response", "").strip()
-            logger.info(f"Got response from Ollama ({len(result)} chars)")
+            logger.info(f"Response from {model}: {len(result)} chars")
             return result
 
         except httpx.TimeoutException:
-            logger.warning(f"Timeout with {model}, trying fallback...")
-            if not use_fallback:
-                return self.generate(prompt, system_prompt, use_fallback=True)
-            raise TimeoutError("Ollama is not responding. Make sure it's running.")
+            logger.warning(f"Timeout with {model} — trying fast model as fallback")
+            if model_type != "fast":
+                return self.generate(
+                    prompt,
+                    system_prompt,
+                    model_type="fast",
+                    temperature=temperature
+                )
+            raise TimeoutError("Ollama is not responding. Make sure it is running.")
 
         except Exception as e:
-            logger.error(f"Ollama error: {e}")
-            if not use_fallback:
-                logger.info("Trying fallback model...")
-                return self.generate(prompt, system_prompt, use_fallback=True)
+            logger.error(f"Ollama error with {model}: {e}")
+            if model_type != "fast":
+                logger.info("Falling back to fast model...")
+                return self.generate(
+                    prompt,
+                    system_prompt,
+                    model_type="fast",
+                    temperature=temperature
+                )
             raise RuntimeError(f"Could not get response from Ollama: {e}")
+
+    def _select_model(self, model_type: str) -> str:
+        """Return the correct model name for the given task type."""
+        model_map = {
+            "report": self.report_model,   # MedGemma for medical reports
+            "fast": self.fast_model,        # llama3.2:3b for quick tasks
+            "vision": self.vision_model,    # llama3.2-vision for images
+        }
+        return model_map.get(model_type, self.report_model)
 
 
 # ─── Singleton ────────────────────────────────────────────

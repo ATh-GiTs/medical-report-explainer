@@ -103,3 +103,30 @@ class HealthResponse(BaseModel):
     version: str
     ollama_connected: bool
     timestamp: datetime = Field(default_factory=datetime.now)
+
+# ─── Prescription Models ──────────────────────────────────
+class PrescriptionItem(BaseModel):
+    medicine_name: str
+    dosage: Optional[str] = None
+    frequency: Optional[str] = None
+    duration: Optional[str] = None
+    purpose: Optional[str] = None
+    instructions: Optional[str] = None
+    warnings: Optional[str] = None
+
+
+class PrescriptionExplanation(BaseModel):
+    doctor_name: Optional[str] = None
+    patient_name: Optional[str] = None
+    date: Optional[str] = None
+    medicines: List[PrescriptionItem] = []
+    general_instructions: Optional[str] = None
+    confidence_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    raw_text: Optional[str] = None
+
+
+class PrescriptionUploadResponse(BaseModel):
+    filename: str
+    medicines_found: int
+    explanation: PrescriptionExplanation
+    message: str

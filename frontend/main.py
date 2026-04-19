@@ -8,299 +8,410 @@ st.set_page_config(
     page_title="Medical Report Explainer",
     page_icon="🏥",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# ─── API Base URL ─────────────────────────────────────────
+# ─── Organic Warm Beige UI/UX CSS Injection ────────────────
+def inject_custom_css():
+    st.markdown("""
+    <style>
+        /* Restored the native Streamlit Header/Menu by removing the hidden visibility rules */
+        footer {visibility: hidden;}
+
+        /* APP BACKGROUND & TYPOGRAPHY */
+        .stApp {
+            background-color: #FDFBF9; 
+            font-family: 'Inter', -apple-system, sans-serif;
+            color: #4A3F35; 
+        }
+
+        h1, h2, h3, h4 {
+            color: #2D241E; 
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        /* =========================================
+           TOP NAVIGATION SHAPES & BORDERS
+           ========================================= */
+        div[data-testid="stSelectbox"] > div[data-baseweb="select"] {
+            border-radius: 25px !important;
+            border: 1.5px solid #C4B5A5 !important;
+            background-color: #FFFFFF !important;
+            padding: 2px 10px !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            transition: all 0.2s ease;
+        }
+        div[data-testid="stSelectbox"] > div[data-baseweb="select"]:hover {
+            border-color: #A67C65 !important;
+        }
+
+        div[data-testid="stPopover"] > button {
+            border-radius: 25px !important;
+            border: 1.5px solid #C4B5A5 !important;
+            background-color: #FFFFFF !important;
+            color: #4A3F35 !important;
+            padding: 5px 20px !important;
+            font-weight: 600 !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
+            transition: all 0.2s ease !important;
+        }
+        div[data-testid="stPopover"] > button:hover {
+            border-color: #A67C65 !important;
+            background-color: #FCFAFA !important;
+            transform: translateY(-1px);
+        }
+
+        /* MODERN TABS */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 12px;
+            background-color: #F2EBE5; 
+            padding: 12px 12px 0px 12px;
+            border-radius: 16px;
+            box-shadow: inset 0 -2px 0 0 #E0D5CC;
+            margin-bottom: 30px;
+        }
+        .stTabs [data-baseweb="tab"] {
+            height: 50px;
+            border-radius: 10px 10px 0px 0px;
+            padding: 10px 24px;
+            color: #8C7A6B; 
+            font-weight: 600;
+        }
+        .stTabs [aria-selected="true"] {
+            background-color: #FFFFFF !important;
+            border-bottom: 3px solid #1A1A1A !important; 
+            color: #1A1A1A !important;
+            font-weight: 800;
+        }
+
+        /* SLIDESPILOT-STYLE FILE UPLOADER HACK */
+        [data-testid="stFileUploadDropzone"] {
+            border: 2px dashed #D6C8B8 !important; 
+            border-radius: 16px !important;
+            background-color: #FFFFFF !important; 
+            padding: 60px 20px !important; 
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+            transition: all 0.3s ease;
+        }
+        [data-testid="stFileUploadDropzone"]:hover {
+            border-color: #1A1A1A !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+        }
+        
+        [data-testid="stFileUploadDropzone"] svg { display: none !important; }
+        
+        [data-testid="stFileUploadDropzone"] > div > div::before {
+            content: "Drag & drop your file here or";
+            display: block;
+            font-size: 1.15rem;
+            color: #4A3F35;
+            font-weight: 500;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        [data-testid="stFileUploadDropzone"] .css-1b1hlgl { display: none !important; }
+        [data-testid="stFileUploadDropzone"] .css-1v0mbdj { display: none !important; }
+
+        [data-testid="stFileUploadDropzone"] button {
+            background-color: #1A1A1A !important; 
+            color: #FFFFFF !important;
+            border-radius: 8px !important;
+            padding: 10px 30px !important;
+            font-weight: 600 !important;
+            font-size: 1rem !important;
+            border: none !important;
+            margin: 0 auto !important;
+            display: block !important;
+        }
+        [data-testid="stFileUploadDropzone"] button:hover {
+            background-color: #333333 !important;
+        }
+        [data-testid="stFileUploadDropzone"] small { display: none !important; }
+
+        /* RESULT CARDS */
+        [data-testid="stMetric"], .stExpander {
+            background-color: #FFFFFF;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid #E0D5CC; 
+        }
+        
+        /* SIDEBAR STYLING */
+        [data-testid="stSidebar"] {
+            background-color: #F2EBE5; 
+            border-right: 1px solid #E0D5CC;
+        }
+        
+        .check-text {
+            text-align: center; 
+            color: #8C7A6B; 
+            font-size: 0.85rem; 
+            margin-top: 15px;
+            font-weight: 500;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+inject_custom_css()
+
+# ─── API Base URL & Config ────────────────────────────────
 API_URL = "http://localhost:8000/api/v1"
 
-# ─── Language Options ─────────────────────────────────────
 LANGUAGES = {
-    "English": "en",
-    "Hindi (हिंदी)": "hi",
-    "Marathi (मराठी)": "mr",
-    "Tamil (தமிழ்)": "ta",
-    "Bengali (বাংলা)": "bn",
-    "Telugu (తెలుగు)": "te",
+    "English": "en", "Hindi (हिंदी)": "hi", "Marathi (मराठी)": "mr",
+    "Tamil (தமிழ்)": "ta", "Bengali (বাংলা)": "bn", "Telugu (తెలుగు)": "te",
     "Gujarati (ગુજરાતી)": "gu",
 }
 
-# ─── Session State Initialization ─────────────────────────
+# ─── State Initialization ─────────────────────────────────
 if "api_status" not in st.session_state:
     st.session_state["api_status"] = None
 if "last_health_check" not in st.session_state:
     st.session_state["last_health_check"] = 0
 if "is_processing" not in st.session_state:
     st.session_state["is_processing"] = False
+if "prefill_question" not in st.session_state:
+    st.session_state["prefill_question"] = ""
+if "report_data" not in st.session_state:
+    st.session_state["report_data"] = {}
 
-
-# ─── Helper: Check API Health (cached for 10 seconds) ─────
+# ─── Helper Functions ─────────────────────────────────────
 def check_api_health(force=False):
-    """
-    Check API health but cache result for 10 seconds.
-    This prevents health check from running during active queries
-    and falsely showing API as down.
-    """
     now = time.time()
-    # Only re-check if 10 seconds have passed OR force refresh
     if force or (now - st.session_state["last_health_check"]) > 10:
         try:
             response = requests.get(f"{API_URL}/health", timeout=5)
-            if response.status_code == 200:
-                st.session_state["api_status"] = response.json()
-            else:
-                st.session_state["api_status"] = None
+            st.session_state["api_status"] = response.json() if response.status_code == 200 else None
         except Exception:
-            # If processing is happening, don't mark as down
             if not st.session_state["is_processing"]:
                 st.session_state["api_status"] = None
         st.session_state["last_health_check"] = now
-
     return st.session_state["api_status"]
 
-
-# ─── Helper: Upload Report ────────────────────────────────
 def upload_report(file_bytes, filename):
     try:
         st.session_state["is_processing"] = True
-        response = requests.post(
-            f"{API_URL}/report/upload",
-            files={"file": (filename, file_bytes, "application/pdf")},
-            timeout=300
-        )
+        response = requests.post(f"{API_URL}/report/upload", files={"file": (filename, file_bytes, "application/pdf")}, timeout=300)
         st.session_state["is_processing"] = False
         return response.json(), response.status_code
-    except requests.exceptions.Timeout:
-        st.session_state["is_processing"] = False
-        return {"detail": "Request timed out. The AI is still processing — please wait and try again."}, 408
-    except requests.exceptions.ConnectionError:
-        st.session_state["is_processing"] = False
-        return {"detail": "Cannot connect to API. Make sure FastAPI is running (uvicorn main:app --reload)"}, 503
     except Exception as e:
         st.session_state["is_processing"] = False
-        return {"detail": f"Unexpected error: {str(e)}"}, 500
+        return {"detail": f"Error: {str(e)}"}, 500
 
-
-# ─── Helper: Ask Question ─────────────────────────────────
 def ask_question(report_id, question, language, include_voice):
     try:
         st.session_state["is_processing"] = True
-        response = requests.post(
-            f"{API_URL}/report/query",
-            json={
-                "report_id": report_id,
-                "question": question,
-                "target_language": language,
-                "include_voice": include_voice
-            },
-            timeout=300
-        )
+        response = requests.post(f"{API_URL}/report/query", json={"report_id": report_id, "question": question, "target_language": language, "include_voice": include_voice}, timeout=300)
         st.session_state["is_processing"] = False
         return response.json(), response.status_code
-    except requests.exceptions.Timeout:
-        st.session_state["is_processing"] = False
-        return {"detail": "The AI took too long to respond. Try a simpler question or restart Ollama."}, 408
-    except requests.exceptions.ConnectionError:
-        st.session_state["is_processing"] = False
-        return {"detail": "Cannot connect to API. Make sure FastAPI is running."}, 503
     except Exception as e:
         st.session_state["is_processing"] = False
-        return {"detail": f"Unexpected error: {str(e)}"}, 500
+        return {"detail": f"Error: {str(e)}"}, 500
 
+# ─── TOP NAVIGATION BAR ───────────────────────────────────
+spacer, nav_lang, nav_voice, nav_help = st.columns([6.5, 1.5, 1.2, 1.5])
 
-# ─── Sidebar ──────────────────────────────────────────────
+with nav_lang:
+    selected_language_name = st.selectbox("Language", options=list(LANGUAGES.keys()), index=0, label_visibility="collapsed")
+    selected_language_code = LANGUAGES[selected_language_name]
+
+with nav_voice:
+    st.write("") 
+    include_voice = st.toggle("🔊 Voice", value=False)
+
+with nav_help:
+    with st.popover("⚙️ How It Works", use_container_width=True):
+        st.markdown("**1. Ingest:** Drag & drop a PDF or Image.")
+        st.markdown("**2. Extract:** Hybrid pipeline parses digital text or uses OCR for handwriting.")
+        st.markdown("**3. Structure:** Local LLM structures the messy medical data safely.")
+        st.markdown("**4. Chat:** Semantic search retrieves exact answers from your report.")
+
+# ─── Sidebar Dashboard ────────────────────────────────────
 with st.sidebar:
-    st.image("https://img.icons8.com/color/96/heart-with-pulse.png", width=80)
-    st.title("🏥 Medical Report Explainer")
-    st.markdown("*Powered by MedGemma AI — runs 100% locally*")
+    st.image("https://img.icons8.com/color/96/heart-with-pulse.png", width=60)
+    st.markdown("<h2 style='margin-top: -10px; margin-bottom: 5px;'>System Health</h2>", unsafe_allow_html=True)
     st.divider()
 
-    # ─── API Status ───────────────────────────────────────
-    st.subheader("⚙️ System Status")
-
-    # Show processing message instead of false API down
     if st.session_state["is_processing"]:
-        st.warning("⏳ AI is processing... please wait")
-        st.info("🤖 Ollama: Working")
+        st.info("⏳ Processing data...", icon="🔄")
     else:
         health = check_api_health()
         if health:
-            st.success("✅ API is running")
-            ollama_ok = health.get("ollama_connected", False)
-            if ollama_ok:
-                st.info("🤖 Ollama: ✅ Connected")
+            st.success("API Online", icon="🟢")
+            if health.get("ollama_connected", False):
+                st.success("Ollama Engine Online", icon="🧠")
             else:
-                st.warning("🤖 Ollama: ⚠️ Not connected — run: ollama serve")
+                st.warning("Ollama Offline", icon="⚠️")
         else:
-            st.error("❌ API is not running")
-            st.warning("Start FastAPI:\n```\nuvicorn main:app --reload\n```")
+            st.error("API Offline - Start Uvicorn", icon="🔴")
 
-    # ─── Manual refresh button ────────────────────────────
-    if st.button("🔄 Refresh Status", use_container_width=True):
+    if st.button("🔄 Refresh Connection", use_container_width=True):
         check_api_health(force=True)
         st.rerun()
 
     st.divider()
+    st.markdown("### 🛠️ Tech Stack")
+    st.markdown("`Streamlit` `FastAPI` `MedGemma 1.5` `Ollama` `Tesseract OCR` `ChromaDB`")
 
-    # ─── Language Selector ────────────────────────────────
-    st.subheader("🌍 Select Language")
-    selected_language_name = st.selectbox(
-        "Response Language",
-        options=list(LANGUAGES.keys()),
-        index=0
-    )
-    selected_language_code = LANGUAGES[selected_language_name]
+# ─── Main Content Area (Hero Section) ──────────────────────
+st.markdown("<h1 style='text-align: center; font-size: 3.5rem; margin-top: -20px; margin-bottom: 0px;'>Summarize Medical Reports with AI</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; font-size: 1.25rem; margin-top: 10px; margin-bottom: 40px;'>Instant AI summaries and clinical insights for lab reports and prescriptions.</p>", unsafe_allow_html=True)
 
-    # ─── Voice Option ─────────────────────────────────────
-    include_voice = st.toggle("🔊 Voice Output", value=False)
-
-    st.divider()
-    st.caption("Built with ❤️ using MedGemma, ChromaDB, FastAPI & Streamlit")
-
-
-# ─── Main Content ─────────────────────────────────────────
-st.title("🏥 Medical Report Explainer")
-st.markdown("**Upload your medical report and ask questions in your language**")
-st.divider()
-
-# ─── Tab Layout ───────────────────────────────────────────
-tab1, tab2 = st.tabs(["📤 Upload Report", "💬 Ask Questions"])
-
+# ─── COMBINED TABS ────────────────────────────────────────
+tab1, tab2 = st.tabs(["📄 AI Summarizer & Chat", "💊 AI Prescription Reader"])
 
 # ════════════════════════════════════════════════════════
-# TAB 1: Upload Report
+# TAB 1: Upload Report & Chat (Merged Workflow)
 # ════════════════════════════════════════════════════════
 with tab1:
-    st.subheader("Upload Your Medical Report")
-    st.markdown("Supported format: **PDF only** | Max size: **10MB**")
+    st.write("")
+    col_l, col_m, col_r = st.columns([1, 2, 1]) 
+    
+    with col_m:
+        uploaded_file = st.file_uploader("Upload Document", type=["pdf"], label_visibility="collapsed")
+        
+        if not uploaded_file:
+            st.markdown("<p class='check-text'>✓ 10MB Maximum File Size &nbsp;&nbsp;&nbsp;&nbsp; ✓ PDF Formats</p>", unsafe_allow_html=True)
 
-    uploaded_file = st.file_uploader(
-        "Choose a medical report PDF",
-        type=["pdf"],
-        help="Upload blood test reports, prescriptions, discharge summaries etc."
-    )
+        if uploaded_file:
+            st.success(f"✅ Securely Loaded: **{uploaded_file.name}**")
+            
+            # Show "Summarize" button ONLY if this file hasn't been processed yet
+            if st.session_state.get("filename") != uploaded_file.name:
+                process_btn = st.button("✨ Summarize with AI", type="primary")
 
-    if uploaded_file:
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            st.info(f"📄 **File:** {uploaded_file.name} ({uploaded_file.size / 1024:.1f} KB)")
-        with col2:
-            process_btn = st.button("🚀 Process Report", type="primary", use_container_width=True)
+                if process_btn:
+                    with st.spinner("Extracting parameters and indexing data via MedGemma..."):
+                        result, status_code = upload_report(uploaded_file.read(), uploaded_file.name)
 
-        if process_btn:
-            with st.spinner("🔍 AI is analyzing your medical report... this may take 30-60 seconds"):
-                result, status_code = upload_report(uploaded_file.read(), uploaded_file.name)
+                    if status_code == 200:
+                        st.session_state["report_id"] = result["report_id"]
+                        st.session_state["filename"] = result["filename"]
+                        # Save metrics data so it survives reruns
+                        st.session_state["report_data"] = {
+                            "type": result["report_type"].replace("_", " ").title(),
+                            "params": result["parameters_found"]
+                        }
+                        st.rerun() # Force a rerun to lock in the state and show the chat
+                    else:
+                        st.error(result.get('detail', 'Processing failed'))
+            
+            # If the file HAS been processed, show the permanent metrics
+            if st.session_state.get("filename") == uploaded_file.name:
+                st.markdown("### 📊 Document Summary")
+                metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
+                metrics_col1.metric("Tracking ID", st.session_state["report_id"][:8])
+                metrics_col2.metric("Category", st.session_state["report_data"].get("type", "Unknown"))
+                metrics_col3.metric("Data Points", st.session_state["report_data"].get("params", 0))
 
-            if status_code == 200:
-                st.success(f"✅ {result.get('message', 'Report processed!')}")
-                st.session_state["report_id"] = result["report_id"]
-                st.session_state["filename"] = result["filename"]
-
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Report ID", result["report_id"])
-                with col2:
-                    st.metric("Report Type", result["report_type"].replace("_", " ").title())
-                with col3:
-                    st.metric("Parameters Found", result["parameters_found"])
-
-                st.info("👉 Go to the **Ask Questions** tab to start asking about your report!")
-
-            elif status_code == 408:
-                st.warning(f"⏳ {result.get('detail')}")
-            elif status_code == 503:
-                st.error(f"🔌 {result.get('detail')}")
-            else:
-                st.error(f"❌ Error: {result.get('detail', 'Processing failed')}")
-
-
-# ════════════════════════════════════════════════════════
-# TAB 2: Ask Questions
-# ════════════════════════════════════════════════════════
-with tab2:
-    st.subheader("Ask Questions About Your Report")
-
-    if "report_id" not in st.session_state:
-        st.warning("⚠️ Please upload a medical report first in the **Upload Report** tab.")
-    else:
-        st.success(f"📄 Active Report: **{st.session_state.get('filename', 'Unknown')}** (ID: `{st.session_state['report_id']}`)")
+    # --- CHAT INTERFACE (Appears Below Uploader Only If Processed) ---
+    if uploaded_file and st.session_state.get("filename") == uploaded_file.name:
         st.divider()
-
-        # ─── Suggested questions ──────────────────────────
-        st.markdown("**💡 Suggested Questions:**")
-        suggestions = [
-            "Is my blood sugar normal?",
-            "What does my cholesterol mean?",
-            "Which values are abnormal?",
-            "Summarize my report simply",
-            "Should I be worried?",
-        ]
-
-        cols = st.columns(len(suggestions))
+        st.markdown("<h3 style='text-align: center;'>💬 Chat with your Document</h3>", unsafe_allow_html=True)
+        st.write("")
+        
+        st.markdown("**Suggested Queries:**")
+        cols = st.columns(4)
+        suggestions = ["Is blood sugar normal?", "Explain my cholesterol", "Any abnormal values?", "Give a simple summary"]
         for i, suggestion in enumerate(suggestions):
-            if cols[i].button(suggestion, key=f"suggestion_{i}", use_container_width=True):
+            if cols[i].button(suggestion, key=f"sug_{i}"):
                 st.session_state["prefill_question"] = suggestion
+                st.rerun() 
 
-        # ─── Question Input ───────────────────────────────
-        question = st.text_input(
-            "Your Question",
-            value=st.session_state.pop("prefill_question", ""),
-            placeholder="e.g. Is my hemoglobin level normal?",
-        )
-
-        ask_btn = st.button("🔍 Get Answer", type="primary")
+        st.write("")
+        question = st.text_input("Ask a specific question:", value=st.session_state.get("prefill_question", ""), placeholder="e.g., What does my Hemoglobin A1C indicate?")
+        
+        col_btn, _ = st.columns([1, 4])
+        with col_btn:
+            ask_btn = st.button("Submit Query", type="primary")
 
         if ask_btn and question:
-            # ─── Show clear processing state ──────────────
-            with st.spinner(f"🤖 MedGemma is thinking... responding in {selected_language_name} — please wait up to 60 seconds"):
-                result, status_code = ask_question(
-                    report_id=st.session_state["report_id"],
-                    question=question,
-                    language=selected_language_code,
-                    include_voice=include_voice
-                )
-
-            # ─── Force refresh status after query ─────────
+            with st.spinner("Searching medical vector database..."):
+                result, status_code = ask_question(st.session_state["report_id"], question, selected_language_code, include_voice)
             check_api_health(force=True)
 
             if status_code == 200:
-                st.divider()
-
-                # ─── Show Answer ──────────────────────────
+                st.markdown("### 💡 Intelligence Report")
                 if selected_language_code != "en" and result.get("answer_translated"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown("**🇬🇧 English Answer:**")
-                        st.info(result["answer_english"])
-                    with col2:
-                        st.markdown(f"**{selected_language_name} Answer:**")
-                        st.success(result["answer_translated"])
+                    st.success(result["answer_translated"])
+                    with st.expander("Show Original English Transcript"):
+                        st.write(result["answer_english"])
                 else:
-                    st.markdown("**🤖 AI Answer:**")
-                    st.info(result["answer_english"])
+                    st.success(result["answer_english"])
 
-                # ─── Voice Output ─────────────────────────
-                if include_voice and result.get("voice_file_path"):
-                    voice_path = result["voice_file_path"]
-                    if os.path.exists(voice_path):
-                        st.markdown("**🔊 Listen to Answer:**")
-                        with open(voice_path, "rb") as audio_file:
-                            st.audio(audio_file.read(), format="audio/mp3")
+                if include_voice and result.get("voice_file_path") and os.path.exists(result["voice_file_path"]):
+                    with open(result["voice_file_path"], "rb") as audio_file:
+                        st.audio(audio_file.read(), format="audio/mp3")
 
-                # ─── Response metadata ────────────────────
-                st.caption(
-                    f"⚡ Response time: {result.get('response_time_ms', 0):.0f}ms | "
-                    f"🔒 Processed locally | "
-                    f"📄 Based on {len(result.get('source_chunks', []))} relevant sections"
-                )
-
-            elif status_code == 408:
-                st.warning(f"⏳ {result.get('detail')}")
-                st.info("💡 **Tip:** Try asking a shorter, simpler question. Or restart Ollama and try again.")
-            elif status_code == 503:
-                st.error(f"🔌 {result.get('detail')}")
+                st.caption(f"⚡ Latency: {result.get('response_time_ms', 0):.0f}ms | 📄 Vector Chunks: {len(result.get('source_chunks', []))}")
+                st.session_state["prefill_question"] = "" 
             else:
-                st.error(f"❌ {result.get('detail', 'Could not get answer. Please try again.')}")
+                st.error(result.get('detail', 'Could not fetch answer.'))
 
-        elif ask_btn and not question:
-            st.warning("Please type a question first!")
+
+# ════════════════════════════════════════════════════════
+# TAB 2: Prescription Reader
+# ════════════════════════════════════════════════════════
+with tab2:
+    st.write("")
+    col_l, col_m, col_r = st.columns([1, 2, 1]) 
+    with col_m:
+        rx_file = st.file_uploader("Upload Image or PDF", type=["pdf", "jpg", "jpeg", "png"], key="rx_uploader", label_visibility="collapsed")
+        
+        if not rx_file:
+            st.markdown("<p class='check-text'>✓ 10MB Maximum File Size &nbsp;&nbsp;&nbsp;&nbsp; ✓ PDF, JPG, or PNG Formats</p>", unsafe_allow_html=True)
+
+        if rx_file:
+            st.success(f"✅ Document Loaded: {rx_file.name}")
+            if rx_file.type.startswith("image"):
+                st.image(rx_file, use_container_width=True, clamp=True)
+            
+            st.caption("🔍 Uses Hybrid Tesseract + MedGemma Pipeline")
+            read_btn = st.button("✨ Initiate Scan", type="primary")
+
+            if read_btn:
+                with st.spinner("Running visual analysis and medical structuring..."):
+                    try:
+                        response = requests.post(f"{API_URL}/prescription/upload", files={"file": (rx_file.name, rx_file.read(), rx_file.type)}, timeout=300)
+                        result = response.json()
+                        status_code = response.status_code
+                    except Exception as e:
+                        st.error(f"Engine Failure: {str(e)}")
+                        st.stop()
+
+                if status_code == 200:
+                    explanation = result.get("explanation", {})
+                    medicines = explanation.get("medicines", [])
+
+                    st.markdown("### 🩺 Prescriber Details")
+                    doc_col, pat_col, date_col = st.columns(3)
+                    doc_col.metric("Attending Doctor", explanation.get("doctor_name") or "Unverified")
+                    pat_col.metric("Patient Record", explanation.get("patient_name") or "Unverified")
+                    date_col.metric("Date Issued", explanation.get("date") or "Unverified")
+
+                    if medicines:
+                        st.markdown(f"### 💊 Identified Medications ({len(medicines)})")
+                        for med in medicines:
+                            with st.expander(f"{med.get('medicine_name', 'Unknown Medication')}", expanded=True):
+                                med_col1, med_col2 = st.columns(2)
+                                with med_col1:
+                                    st.markdown(f"**Dosage:** `{med.get('dosage') or 'Not specified'}`")
+                                    st.markdown(f"**Frequency:** `{med.get('frequency') or 'Not specified'}`")
+                                with med_col2:
+                                    st.markdown(f"**Duration:** `{med.get('duration') or 'Not specified'}`")
+                                    st.markdown(f"**Instructions:** `{med.get('instructions') or 'Not specified'}`")
+                                
+                                if med.get("purpose"):
+                                    st.info(f"**Indication:** {med.get('purpose')}")
+                                if med.get("warnings"):
+                                    st.warning(f"**Clinical Warnings:** {med.get('warnings')}")
+
+                    if explanation.get("general_instructions"):
+                        st.markdown("### 📝 Clinical Notes")
+                        st.info(explanation.get("general_instructions"))
+
+                else:
+                    st.error(result.get('detail', 'Scan failed.'))

@@ -49,7 +49,7 @@ class QueryAgent:
         prompt = self._build_prompt(request.question, context)
 
         # ─── Step 3: Generate answer with MedGemma ────────
-        answer_english = ollama_service.generate(prompt, QA_SYSTEM_PROMPT)
+        answer_english = ollama_service.generate(prompt, QA_SYSTEM_PROMPT, model_type="report")
 
         # ─── Step 4: Translate if needed ──────────────────
         answer_translated = None

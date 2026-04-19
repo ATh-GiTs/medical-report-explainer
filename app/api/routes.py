@@ -5,11 +5,13 @@ from datetime import datetime
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.agents.extraction_agent import extraction_agent
 from app.agents.query_agent import query_agent
+from app.agents.prescription_agent import prescription_agent
 from app.models.schemas import (
     ReportUploadResponse,
     QueryRequest,
     QueryResponse,
     HealthResponse,
+    PrescriptionUploadResponse,
 )
 from app.services.ollama_service import ollama_service
 from app.services.translation_service import translation_service
@@ -109,3 +111,57 @@ def health_check():  # Removed 'async' here too
 async def get_languages():
     """Return all supported languages for translation."""
     return translation_service.get_supported_languages()
+
+
+# ─── Upload Prescription ──────────────────────────────────
+@router.post("/prescription/upload", response_model=PrescriptionUploadResponse)
+async def upload_prescription(file: UploadFile = File(...)):
+    """
+    Upload a prescription as PDF or image (JPG/PNG).
+    Reads medicines, dosages and enriches with purpose/warnings.
+    """
+    # ─── Validate file type ───────────────────────────────
+    allowed = [".pdf", ".jpg", ".jpeg", ".png"]
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type. Allowed: PDF, JPG, PNG"
+        )
+
+    # ─── Read and save file ───────────────────────────────
+    file_bytes = await file.read()
+    max_bytes = settings.max_file_size_mb * 1024 * 1024
+    if len(file_bytes) > max_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum {settings.max_file_size_mb}MB allowed."
+        )
+
+    os.makedirs(settings.upload_dir, exist_ok=True)
+    safe_filename = f"{uuid.uuid4().hex[:8]}_{file.filename}"
+    file_path = os.path.join(settings.upload_dir, safe_filename)
+
+    with open(file_path, "wb") as f:
+        f.write(file_bytes)
+
+    # ─── Determine file type ──────────────────────────────
+    file_type = "pdf" if ext == ".pdf" else "image"
+
+    try:
+        explanation = prescription_agent.process_prescription(
+            file_path, file.filename, file_type
+        )
+        return PrescriptionUploadResponse(
+            filename=file.filename,
+            medicines_found=len(explanation.medicines),
+            explanation=explanation,
+            message=f"Found {len(explanation.medicines)} medicine(s) in prescription."
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.error(f"Prescription processing failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to read prescription.")

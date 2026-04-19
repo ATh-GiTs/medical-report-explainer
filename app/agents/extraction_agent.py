@@ -77,7 +77,7 @@ Reply with ONLY one of these exact words:
 Your answer:"""
 
         try:
-            response = ollama_service.generate(prompt, EXTRACTION_SYSTEM_PROMPT)
+            response = ollama_service.generate(prompt, EXTRACTION_SYSTEM_PROMPT, model_type="fast")
             response = response.strip().lower()
 
             for report_type in ReportType:
@@ -110,7 +110,7 @@ List each parameter on a new line like:
 PARAM: name | value | unit | normal_range | abnormal(yes/no)"""
 
         try:
-            response = ollama_service.generate(prompt, EXTRACTION_SYSTEM_PROMPT)
+            response = ollama_service.generate(prompt, EXTRACTION_SYSTEM_PROMPT, model_type="report")
             return self._parse_parameters(response)
         except Exception as e:
             logger.error(f"Parameter extraction failed: {e}")
@@ -154,7 +154,7 @@ doctor_name: <value or unknown>
 hospital_name: <value or unknown>"""
 
         try:
-            response = ollama_service.generate(prompt, EXTRACTION_SYSTEM_PROMPT)
+            response = ollama_service.generate(prompt, EXTRACTION_SYSTEM_PROMPT, model_type="fast")
             metadata = {}
             for line in response.split("\n"):
                 if ":" in line:

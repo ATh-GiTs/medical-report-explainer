@@ -9,11 +9,16 @@ class Settings(BaseSettings):
     debug: bool = True
     environment: str = "development"
 
-    # ─── Ollama ───────────────────────────────────────────
+# ─── Ollama Model Routing ─────────────────────────────
     ollama_base_url: str = "http://localhost:11434"
+    ollama_report_model: str = "alibayram/medgemma"    # Medical reports & Q&A
+    ollama_vision_model: str = "llama3.2-vision"       # Prescription images
+    ollama_fast_model: str = "llama3.2:3b"             # Classification & translation
+    ollama_embed_model: str = "nomic-embed-text"       # Embeddings for RAG
+
+    # Keep these for backward compatibility
     ollama_model: str = "alibayram/medgemma"
     ollama_fallback_model: str = "llama3.2:3b"
-    ollama_embed_model: str = "nomic-embed-text"
 
     # ─── ChromaDB ─────────────────────────────────────────
     chroma_persist_dir: str = "./data/vectorstore"
