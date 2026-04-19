@@ -1,5 +1,6 @@
 import chromadb
 from chromadb.utils import embedding_functions
+from fastapi import HTTPException  # FIX: was missing, caused NameError in delete_report()
 from app.core.config import settings
 from app.core.logger import logger
 
@@ -12,8 +13,13 @@ class VectorStoreService:
 
     def __init__(self):
         # ─── Persistent ChromaDB client ───────────────────
+        # FIX: anonymized_telemetry=False resolves the startup error:
+        #   "capture() takes 1 positional argument but 3 were given"
+        # This is a known ChromaDB bug where their internal posthog telemetry
+        # client has a signature mismatch with certain installed versions.
         self.client = chromadb.PersistentClient(
-            path=settings.chroma_persist_dir
+            path=settings.chroma_persist_dir,
+            settings=chromadb.Settings(anonymized_telemetry=False),
         )
 
         # ─── Use Ollama's nomic-embed-text for embeddings ─

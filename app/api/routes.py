@@ -22,6 +22,9 @@ router = APIRouter()
 
 
 # ─── Health Check ─────────────────────────────────────────
+# FIX: There were TWO @router.get("/health") definitions (one async, one sync).
+# FastAPI registers only the first one and silently ignores the duplicate.
+# Kept the async version — removed the duplicate below /report/query.
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
     """Check if the API and Ollama are running correctly."""
@@ -97,14 +100,6 @@ async def query_report(request: QueryRequest):
         logger.error(f"Query failed: {e}")
         raise HTTPException(status_code=500, detail="Could not generate answer.")
 
-@router.get("/health", response_model=HealthResponse)
-def health_check():  # Removed 'async' here too
-    return HealthResponse(
-        status="healthy",
-        app_name=settings.app_name,
-        version=settings.app_version,
-        ollama_connected=ollama_service.is_connected(),
-    )
 
 # ─── Get Supported Languages ──────────────────────────────
 @router.get("/languages")
