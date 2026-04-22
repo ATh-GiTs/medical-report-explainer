@@ -1,6 +1,11 @@
+import os
+# Must be set BEFORE chromadb is imported — covers all ChromaDB versions
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+os.environ["CHROMA_TELEMETRY"] = "False"
+
 import chromadb
 from chromadb.utils import embedding_functions
-from fastapi import HTTPException  # FIX: was missing, caused NameError in delete_report()
+from fastapi import HTTPException
 from app.core.config import settings
 from app.core.logger import logger
 

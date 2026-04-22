@@ -1,17 +1,15 @@
 import uuid
-from app.services.ollama_service import ollama_service
+from app.services.groq_service import groq_service
 from app.services.vector_store import vector_store
 from app.utils.pdf_parser import extract_text_from_pdf, chunk_text
 from app.models.schemas import ExtractedReportData, ReportType, MedicalParameter
 from app.core.logger import logger
-
 
 # ─── System prompt for medical extraction ─────────────────
 EXTRACTION_SYSTEM_PROMPT = """You are a medical document analysis expert. 
 Your job is to analyze medical reports and extract key information accurately.
 Always be precise, factual, and never make up medical information.
 If something is unclear, say so rather than guessing."""
-
 
 class ExtractionAgent:
     """
@@ -20,10 +18,7 @@ class ExtractionAgent:
     """
 
     def process_report(self, file_path: str, filename: str) -> ExtractedReportData:
-        """
-        Full pipeline: PDF → Text → Classification → Extraction → Vector Store
-        """
-        report_id = str(uuid.uuid4())[:8]  # Short unique ID
+        report_id = str(uuid.uuid4())[:8]  
         logger.info(f"Processing report: {filename} (ID: {report_id})")
 
         # ─── Step 1: Extract raw text from PDF ────────────
@@ -62,7 +57,6 @@ class ExtractionAgent:
         return report_data
 
     def _classify_report(self, text: str) -> ReportType:
-        """Ask MedGemma to classify what type of medical report this is."""
         prompt = f"""Look at this medical document text and classify it.
         
 Text (first 500 chars): {text[:500]}
@@ -77,67 +71,68 @@ Reply with ONLY one of these exact words:
 Your answer:"""
 
         try:
-            response = ollama_service.generate(prompt, EXTRACTION_SYSTEM_PROMPT, model_type="fast")
+            response = groq_service.generate(prompt, EXTRACTION_SYSTEM_PROMPT, model_type="fast")
             response = response.strip().lower()
-
             for report_type in ReportType:
                 if report_type.value in response:
                     return report_type
-
             return ReportType.UNKNOWN
-
         except Exception as e:
             logger.error(f"Classification failed: {e}")
             return ReportType.UNKNOWN
 
     def _extract_parameters(self, text: str, report_type: ReportType) -> list[MedicalParameter]:
-        """Extract medical parameters like test values, ranges etc."""
         if report_type not in [ReportType.BLOOD_TEST]:
             return []
 
         prompt = f"""Extract medical test parameters from this blood test report.
-For each parameter found, provide:
-- Name of the test
-- Value found
-- Unit (if present)  
-- Normal range (if mentioned)
-- Whether it's abnormal (yes/no)
+        
+CRITICAL INSTRUCTION: You MUST output the data EXACTLY in the format below. 
+Do NOT use markdown tables. Do NOT use bullet points. Do NOT add extra text.
+Start EVERY single extracted line with the exact word "PARAM:".
+
+Format:
+PARAM: name | value | unit | normal_range | abnormal(yes/no)
 
 Report text:
-{text[:2000]}
-
-List each parameter on a new line like:
-PARAM: name | value | unit | normal_range | abnormal(yes/no)"""
+{text[:3000]}"""
 
         try:
-            response = ollama_service.generate(prompt, EXTRACTION_SYSTEM_PROMPT, model_type="report")
+            response = groq_service.generate(prompt, EXTRACTION_SYSTEM_PROMPT, model_type="report")
+            # Debugging print to check AI output in terminal
+            print(f"\n--- RAW GROQ OUTPUT ---\n{response}\n-----------------------\n")
             return self._parse_parameters(response)
         except Exception as e:
             logger.error(f"Parameter extraction failed: {e}")
             return []
 
     def _parse_parameters(self, response: str) -> list[MedicalParameter]:
-        """Parse the LLM's parameter response into Pydantic models."""
         parameters = []
         for line in response.split("\n"):
-            if line.startswith("PARAM:"):
+            # Clean rogue markdown formatting
+            clean_line = line.replace("**", "").replace("*", "").strip()
+            
+            if "PARAM:" in clean_line.upper():
                 try:
-                    parts = line.replace("PARAM:", "").split("|")
+                    idx = clean_line.upper().find("PARAM:")
+                    content = clean_line[idx + 6:]
+                    parts = content.split("|")
+                    
                     if len(parts) >= 2:
                         param = MedicalParameter(
-                            name=parts[0].strip(),
+                            name=parts[0].strip().title(),
                             value=parts[1].strip(),
                             unit=parts[2].strip() if len(parts) > 2 else None,
                             normal_range=parts[3].strip() if len(parts) > 3 else None,
                             is_abnormal=parts[4].strip().lower() == "yes" if len(parts) > 4 else None,
                         )
                         parameters.append(param)
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"Skipped a messy line during parsing: {line}")
                     continue
         return parameters
 
     def _extract_metadata(self, text: str) -> dict:
-        """Extract patient name, date, doctor etc from the report."""
         prompt = f"""Extract these details from the medical report if present:
 - Patient name
 - Report date
@@ -154,7 +149,7 @@ doctor_name: <value or unknown>
 hospital_name: <value or unknown>"""
 
         try:
-            response = ollama_service.generate(prompt, EXTRACTION_SYSTEM_PROMPT, model_type="fast")
+            response = groq_service.generate(prompt, EXTRACTION_SYSTEM_PROMPT, model_type="fast")
             metadata = {}
             for line in response.split("\n"):
                 if ":" in line:
@@ -166,7 +161,6 @@ hospital_name: <value or unknown>"""
         except Exception as e:
             logger.error(f"Metadata extraction failed: {e}")
             return {}
-
 
 # ─── Singleton ────────────────────────────────────────────
 extraction_agent = ExtractionAgent()

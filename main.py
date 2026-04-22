@@ -30,9 +30,9 @@ app.include_router(router, prefix="/api/v1")
 # ─── Startup event ────────────────────────────────────────
 @app.on_event("startup")
 async def startup_event():
-    logger.info(f"🏥 {settings.app_name} v{settings.app_version} starting...")
-    logger.info(f"📄 API docs available at: http://localhost:8000/docs")
-    logger.info(f"🤖 Using Ollama model: {settings.ollama_model}")
+    logger.info("Starting up Medical Report Explainer API...")
+    logger.info(f"⚡ Using Groq Text model: {settings.groq_text_model}")
+    logger.info(f"👁️ Using Groq Vision model: {settings.groq_vision_model}")
 
 
 # ─── Run directly ─────────────────────────────────────────

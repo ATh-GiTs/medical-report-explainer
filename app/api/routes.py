@@ -13,7 +13,7 @@ from app.models.schemas import (
     HealthResponse,
     PrescriptionUploadResponse,
 )
-from app.services.ollama_service import ollama_service
+from app.services.groq_service import groq_service
 from app.services.translation_service import translation_service
 from app.core.config import settings
 from app.core.logger import logger
@@ -22,17 +22,16 @@ router = APIRouter()
 
 
 # ─── Health Check ─────────────────────────────────────────
-# FIX: There were TWO @router.get("/health") definitions (one async, one sync).
-# FastAPI registers only the first one and silently ignores the duplicate.
-# Kept the async version — removed the duplicate below /report/query.
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
-    """Check if the API and Ollama are running correctly."""
+    """Check if the API and Groq are running correctly."""
     return HealthResponse(
         status="healthy",
         app_name=settings.app_name,
         version=settings.app_version,
-        ollama_connected=ollama_service.is_connected(),
+        # We keep the variable name 'ollama_connected' so your frontend and schemas don't break, 
+        # but it is now actively checking your Groq API connection!
+        ollama_connected=groq_service.is_connected(),
     )
 
 
@@ -43,11 +42,9 @@ async def upload_report(file: UploadFile = File(...)):
     Upload a medical report PDF.
     Extracts text, classifies it, indexes it in ChromaDB.
     """
-    # ─── Validate file type ───────────────────────────────
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
-    # ─── Validate file size ───────────────────────────────
     file_bytes = await file.read()
     max_bytes = settings.max_file_size_mb * 1024 * 1024
     if len(file_bytes) > max_bytes:
@@ -56,7 +53,6 @@ async def upload_report(file: UploadFile = File(...)):
             detail=f"File too large. Maximum size is {settings.max_file_size_mb}MB."
         )
 
-    # ─── Save file to disk ────────────────────────────────
     os.makedirs(settings.upload_dir, exist_ok=True)
     safe_filename = f"{uuid.uuid4().hex[:8]}_{file.filename}"
     file_path = os.path.join(settings.upload_dir, safe_filename)
@@ -64,7 +60,6 @@ async def upload_report(file: UploadFile = File(...)):
     with open(file_path, "wb") as f:
         f.write(file_bytes)
 
-    # ─── Process with extraction agent ────────────────────
     try:
         logger.info(f"Processing uploaded file: {file.filename}")
         report_data = extraction_agent.process_report(file_path, file.filename)
@@ -92,8 +87,6 @@ async def query_report(request: QueryRequest):
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
 
     try:
-        # This offloads the heavy AI generation to a separate thread
-        # so the main thread stays awake for health checks
         response = await asyncio.to_thread(query_agent.answer, request)
         return response
     except Exception as e:
@@ -115,7 +108,6 @@ async def upload_prescription(file: UploadFile = File(...)):
     Upload a prescription as PDF or image (JPG/PNG).
     Reads medicines, dosages and enriches with purpose/warnings.
     """
-    # ─── Validate file type ───────────────────────────────
     allowed = [".pdf", ".jpg", ".jpeg", ".png"]
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in allowed:
@@ -124,7 +116,6 @@ async def upload_prescription(file: UploadFile = File(...)):
             detail=f"Unsupported file type. Allowed: PDF, JPG, PNG"
         )
 
-    # ─── Read and save file ───────────────────────────────
     file_bytes = await file.read()
     max_bytes = settings.max_file_size_mb * 1024 * 1024
     if len(file_bytes) > max_bytes:
@@ -140,7 +131,6 @@ async def upload_prescription(file: UploadFile = File(...)):
     with open(file_path, "wb") as f:
         f.write(file_bytes)
 
-    # ─── Determine file type ──────────────────────────────
     file_type = "pdf" if ext == ".pdf" else "image"
 
     try:

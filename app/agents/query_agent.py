@@ -1,5 +1,5 @@
 import time
-from app.services.ollama_service import ollama_service
+from app.services.groq_service import groq_service
 from app.services.vector_store import vector_store
 from app.services.translation_service import translation_service
 from app.models.schemas import QueryRequest, QueryResponse
@@ -20,17 +20,7 @@ Important rules:
 
 
 class QueryAgent:
-    """
-    RAG-powered Q&A agent — retrieves relevant context from the
-    vector store and generates patient-friendly explanations
-    using MedGemma locally via Ollama.
-    """
-
     def answer(self, request: QueryRequest) -> QueryResponse:
-        """
-        Full RAG pipeline:
-        Question → Retrieve chunks → Build prompt → Generate → Translate
-        """
         start_time = time.time()
         logger.info(f"Processing query for report {request.report_id}: {request.question[:50]}...")
 
@@ -48,8 +38,9 @@ class QueryAgent:
         context = "\n\n".join(relevant_chunks)
         prompt = self._build_prompt(request.question, context)
 
-        # ─── Step 3: Generate answer with MedGemma ────────
-        answer_english = ollama_service.generate(prompt, QA_SYSTEM_PROMPT, model_type="report")
+        # ─── Step 3: Generate answer with Groq ────────────
+        # UPDATED TO GROQ
+        answer_english = groq_service.generate(prompt, QA_SYSTEM_PROMPT, model_type="report")
 
         # ─── Step 4: Translate if needed ──────────────────
         answer_translated = None
@@ -76,13 +67,12 @@ class QueryAgent:
             answer_english=answer_english,
             answer_translated=answer_translated,
             target_language=request.target_language,
-            source_chunks=relevant_chunks[:2],  # Return top 2 for transparency
+            source_chunks=relevant_chunks[:2],  
             voice_file_path=voice_path,
             response_time_ms=round(response_time, 2)
         )
 
     def _build_prompt(self, question: str, context: str) -> str:
-        """Build the RAG prompt with retrieved context."""
         return f"""Use the following medical report information to answer the patient's question.
         
 MEDICAL REPORT CONTEXT:
@@ -95,7 +85,6 @@ Please explain in simple, easy-to-understand language that a non-medical person 
 If the answer involves abnormal values, explain what they mean and suggest the patient consult their doctor."""
 
     def _empty_response(self, request: QueryRequest, start_time: float) -> QueryResponse:
-        """Return a helpful response when no relevant chunks found."""
         response_time = (time.time() - start_time) * 1000
         return QueryResponse(
             report_id=request.report_id,
@@ -104,7 +93,6 @@ If the answer involves abnormal values, explain what they mean and suggest the p
             target_language=request.target_language,
             response_time_ms=round(response_time, 2)
         )
-
 
 # ─── Singleton ────────────────────────────────────────────
 query_agent = QueryAgent()
