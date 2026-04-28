@@ -104,6 +104,7 @@ class HealthResponse(BaseModel):
     ollama_connected: bool
     timestamp: datetime = Field(default_factory=datetime.now)
 
+
 # ─── Prescription Models ──────────────────────────────────
 class PrescriptionItem(BaseModel):
     medicine_name: str

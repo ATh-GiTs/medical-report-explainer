@@ -22,7 +22,8 @@ Extract medicine information from OCR text. Rules:
 1. Fix obvious typos based on medical knowledge.
 2. Never invent medicines not present in the text.
 3. Output 'Unknown' for truly unreadable fields.
-4. Follow the EXACT output format. No extra commentary."""
+4. Follow the EXACT output format. No extra commentary.
+5. Strictly adhere to selective translation rules to ensure patient safety."""
 
 GROQ_VISION_PROMPT = """You are a medical OCR expert. Read this handwritten prescription image carefully.
 Extract ALL text exactly as written, including any multilingual instructions (like Bengali, Hindi, etc). 
@@ -31,20 +32,31 @@ Pay extreme attention to:
 - Dosages (mg, ml, mcg)
 - Frequency (1+0+1, OD, BD, TDS etc.)
 - Doctor and patient names
-Return ONLY the raw extracted text. Do not format it into JSON, just transcribe exactly what you see."""
+Return ONLY the raw extracted text. Do not format it into JSON, just transcribe exactly what you see.
+
+Read this handwritten prescription and focus on precision.
+
+RULES:
+1. Do not 'guess' the medicine. If the cursive is unclear, look for 'key shapes' 
+   common in Indian brands (e.g., 'Pan-D', 'Mox', 'Aceclo').
+2. Identify the strength (mg/ml) as it helps verify the name.
+3. If you see '1+0+1', that indicates a chronic med like 'Pan-D' or 'Moxikind'.
+4. Transcribe exactly, even if it seems misspelled. Do not 'clean' the name yet.
+
+Return the raw transcription first."""
 
 class PrescriptionAgent:
-    def process_prescription(self, file_path: str, filename: str, file_type: str) -> PrescriptionExplanation:
-        logger.info(f"Processing Rx: {filename} ({file_type})")
-        return self._process_pdf(file_path) if file_type == "pdf" else self._process_image(file_path)
+    def process_prescription(self, file_path: str, filename: str, file_type: str, target_language: str = "English") -> PrescriptionExplanation:
+        logger.info(f"Processing Rx: {filename} ({file_type}) - Target Language: {target_language}")
+        return self._process_pdf(file_path, target_language) if file_type == "pdf" else self._process_image(file_path, target_language)
 
-    def _process_pdf(self, file_path: str) -> PrescriptionExplanation:
+    def _process_pdf(self, file_path: str, target_language: str) -> PrescriptionExplanation:
         text = extract_text_from_pdf(file_path)
         if not text.strip():
             raise ValueError("Could not extract text from PDF.")
-        return self._structure(text)
+        return self._structure(text, target_language)
 
-    def _process_image(self, file_path: str) -> PrescriptionExplanation:
+    def _process_image(self, file_path: str, target_language: str) -> PrescriptionExplanation:
         try:
             with Image.open(file_path) as img:
                 if img.mode not in ("RGB",):
@@ -64,25 +76,28 @@ class PrescriptionAgent:
         if len(ocr_text.strip()) < 5:
             return self._fallback("Vision engine could not extract text.")
 
-        # ── Step 2: Structuring Extraction ──
-        return self._structure(ocr_text)
+        # ── Step 2: Structuring Extraction & Selective Translation ──
+        return self._structure(ocr_text, target_language)
 
-    def _structure(self, text: str) -> PrescriptionExplanation:
+    def _structure(self, text: str, target_language: str) -> PrescriptionExplanation:
         sep = "---"
         prompt = (
             f"Read this extracted prescription text. Extract all medicines.\n\n"
-            f"{text[:3000]}\n\n"
+            f"CRITICAL TRANSLATION RULES:\n"
+            f"1. Translate the Doctor name, Patient name, General notes, and Instructions into {target_language}.\n"
+            f"2. DO NOT translate Medicine name, Dosage, Frequency, or Duration. These MUST STRICTLY remain in English for medical safety and accurate pharmacy dispensing.\n\n"
+            f"Text:\n{text[:3000]}\n\n"
             f"Output ONLY in this exact format:\n\n"
-            f"DOCTOR: [name or Unknown]\n"
-            f"PATIENT: [name or Unknown]\n"
+            f"DOCTOR: [name in {target_language} or Unknown]\n"
+            f"PATIENT: [name in {target_language} or Unknown]\n"
             f"DATE: [date or Unknown]\n"
-            f"GENERAL: [notes or Unknown]\n"
+            f"GENERAL: [notes in {target_language} or Unknown]\n"
             f"{sep}\n"
-            f"MEDICINE: [name]\n"
-            f"DOSAGE: [amount or Unknown]\n"
-            f"FREQUENCY: [how often or Unknown]\n"
-            f"DURATION: [how long or Unknown]\n"
-            f"INSTRUCTIONS: [notes or Unknown]\n\n"
+            f"MEDICINE: [name in STRICTLY ENGLISH]\n"
+            f"DOSAGE: [amount in STRICTLY ENGLISH or Unknown]\n"
+            f"FREQUENCY: [how often in STRICTLY ENGLISH or Unknown]\n"
+            f"DURATION: [how long in STRICTLY ENGLISH or Unknown]\n"
+            f"INSTRUCTIONS: [notes in {target_language} or Unknown]\n\n"
             f"Separate each medicine with {sep}. No extra text."
         )
 

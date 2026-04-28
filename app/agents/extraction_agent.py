@@ -1,4 +1,5 @@
 import uuid
+import re
 from app.services.groq_service import groq_service
 from app.services.vector_store import vector_store
 from app.utils.pdf_parser import extract_text_from_pdf, chunk_text
@@ -26,15 +27,18 @@ class ExtractionAgent:
         if not raw_text.strip():
             raise ValueError("Could not extract text from this PDF. Is it a scanned image?")
 
+        # Optimize text by removing excessive newlines and spaces to pack more data into token limits
+        optimized_text = re.sub(r'\s+', ' ', raw_text)
+
         # ─── Step 2: Classify report type ─────────────────
-        report_type = self._classify_report(raw_text)
+        report_type = self._classify_report(optimized_text)
         logger.info(f"Report classified as: {report_type}")
 
         # ─── Step 3: Extract structured parameters ─────────
-        parameters = self._extract_parameters(raw_text, report_type)
+        parameters = self._extract_parameters(optimized_text, report_type)
 
         # ─── Step 4: Extract metadata ──────────────────────
-        metadata = self._extract_metadata(raw_text)
+        metadata = self._extract_metadata(optimized_text)
 
         # ─── Step 5: Chunk and store in vector DB ──────────
         chunks = chunk_text(raw_text, chunk_size=400, overlap=50)
@@ -57,14 +61,16 @@ class ExtractionAgent:
         return report_data
 
     def _classify_report(self, text: str) -> ReportType:
+        # Increased to 2500 chars to read past 20-page report cover letters
         prompt = f"""Look at this medical document text and classify it.
         
-Text (first 500 chars): {text[:500]}
+Text: {text[:2500]}
 
 Reply with ONLY one of these exact words:
 - blood_test
 - radiology  
 - prescription
+- lab_report
 - discharge_summary
 - unknown
 
@@ -82,9 +88,11 @@ Your answer:"""
             return ReportType.UNKNOWN
 
     def _extract_parameters(self, text: str, report_type: ReportType) -> list[MedicalParameter]:
-        if report_type not in [ReportType.BLOOD_TEST]:
+        # Allow extraction attempts for UNKNOWN types in case of multi-page misclassification
+        if report_type in [ReportType.PRESCRIPTION, ReportType.RADIOLOGY]:
             return []
 
+        # Increased to 12000 chars (~3000 tokens, safe for Groq limits) to capture pages 2-5
         prompt = f"""Extract medical test parameters from this blood test report.
         
 CRITICAL INSTRUCTION: You MUST output the data EXACTLY in the format below. 
@@ -95,7 +103,7 @@ Format:
 PARAM: name | value | unit | normal_range | abnormal(yes/no)
 
 Report text:
-{text[:3000]}"""
+{text[:12000]}"""
 
         try:
             response = groq_service.generate(prompt, EXTRACTION_SYSTEM_PROMPT, model_type="report")
@@ -133,6 +141,7 @@ Report text:
         return parameters
 
     def _extract_metadata(self, text: str) -> dict:
+        # Increased to 2500 chars to find doctor/patient names deeper in the document
         prompt = f"""Extract these details from the medical report if present:
 - Patient name
 - Report date
@@ -140,7 +149,7 @@ Report text:
 - Hospital name
 
 Report text:
-{text[:1000]}
+{text[:2500]}
 
 Reply in this exact format:
 patient_name: <value or unknown>

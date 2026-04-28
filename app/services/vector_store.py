@@ -13,7 +13,8 @@ from app.core.logger import logger
 class VectorStoreService:
     """
     Manages ChromaDB vector store for storing and retrieving
-    medical report embeddings using nomic-embed-text via Ollama.
+    medical report embeddings using the built-in SentenceTransformer model,
+    completely bypassing Ollama.
     """
 
     def __init__(self):
@@ -27,19 +28,19 @@ class VectorStoreService:
             settings=chromadb.Settings(anonymized_telemetry=False),
         )
 
-        # ─── Use Ollama's nomic-embed-text for embeddings ─
-        self.embedding_fn = embedding_functions.OllamaEmbeddingFunction(
-            url=f"{settings.ollama_base_url}/api/embeddings",
-            model_name=settings.ollama_embed_model,
+        # ─── Use Built-in SentenceTransformers Embeddings ─
+        # Bypasses Ollama completely to avoid Windows C++ crashes.
+        # Downloads a lightweight, highly accurate model the first time it runs.
+        self.embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name="all-MiniLM-L6-v2"
         )
 
-        # ─── Get or create collection ─────────────────────
+# ─── Get or create collection ─────────────────────
         self.collection = self.client.get_or_create_collection(
-            name=settings.chroma_collection_name,
+            name="medical_reports_v2",  # <-- BYPASS: Forces a brand new database!
             embedding_function=self.embedding_fn,
             metadata={"hnsw:space": "cosine"}
         )
-        logger.info(f"ChromaDB ready — collection: {settings.chroma_collection_name}")
 
     def add_chunks(self, report_id: str, chunks: list[str]) -> None:
         """
