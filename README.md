@@ -1,119 +1,21 @@
-# 🏥 Medical Report Explainer
+# Pulse AI: The Medical Explainer 🩺
+**A Privacy-Preserving Hybrid RAG Framework for Enterprise Medical Analysis**
 
-An AI-powered application that explains medical reports in simple language with multilingual support — built for Indian patients who receive English medical reports.
+Pulse AI bridges the gap between complex clinical data and patient understanding. It acts as an enterprise-grade medical document explainer, utilizing a hybrid privacy architecture to securely process, index, and interpret 20-page lab reports and handwritten prescriptions.
 
-**Runs 100% locally — no cloud, no API costs, complete privacy.**
+## 🚀 Enterprise-Grade Features
+* **Privacy-First Hybrid Architecture:** Sensitive medical documents are embedded and indexed strictly on local hardware (ChromaDB, 384-dim vectors). Only anonymized, context-specific chunks are sent to the cloud reasoning engine.
+* **Large-Scale "Blind Test" RAG:** Implements a 3500-character header truncation algorithm, allowing seamless ingestion of massive 20+ page clinical reports without triggering token rate limits.
+* **Vision & Selective Translation:** Integrates Llama 4 Scout for native multimodal OCR of cursive handwriting. Uses strict selective translation protocols to translate patient instructions into local languages (e.g., Hindi) while enforcing English for medication names to ensure clinical safety.
+* **Deterministic Factual Grounding:** LLM temperature is mechanically restricted to `0.1` across the service layer. The reasoning agent is constrained by strict context-locked prompts to prevent unprompted lifestyle or medical advice (Zero-Hallucination protocol).
 
----
+## 🧠 System Architecture
+1. **Frontend:** Streamlit 
+2. **Backend Gateway:** FastAPI
+3. **Local Vector Store:** ChromaDB + SentenceTransformers (`all-MiniLM-L6-v2`)
+4. **Cloud Reasoning Engine:** Groq LPU (Llama 3.3 70B & Llama 4 Scout)
 
-## 🌟 Features
-
-- 📄 **PDF Upload** — Upload any medical report (blood tests, prescriptions, discharge summaries)
-- 🤖 **AI Extraction** — MedGemma extracts and classifies medical parameters automatically
-- 💬 **Q&A in Simple Language** — Ask questions, get patient-friendly answers
-- 🌍 **Multilingual** — Supports Hindi, Marathi, Tamil, Bengali, Telugu, Gujarati
-- 🔊 **Voice Output** — Listen to answers in your language
-- 🔒 **100% Private** — Everything runs on your machine via Ollama
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|---|---|
-| LLM | MedGemma 4B via Ollama |
-| Embeddings | nomic-embed-text via Ollama |
-| Vector DB | ChromaDB |
-| Backend | FastAPI + Pydantic v2 |
-| Frontend | Streamlit |
-| Translation | deep-translator |
-| Voice | gTTS |
-| Logging | Loguru |
-
----
-
-## 🚀 Setup Instructions
-
-### 1. Prerequisites
-- Python 3.11
-- [Ollama](https://ollama.com/download) installed
-
-### 2. Pull Ollama Models
-```powershell
-ollama pull alibayram/medgemma
-ollama pull llama3.2:3b
-ollama pull nomic-embed-text
-```
-
-### 3. Clone & Setup
-```powershell
-# Create virtual environment
-python -m venv venv
-venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 4. Configure Environment
-```powershell
-# Copy example env file
-copy .env.example .env
-```
-
-### 5. Run the Application
-
-**Terminal 1 — Start FastAPI backend:**
-```powershell
-uvicorn main:app --reload
-```
-
-**Terminal 2 — Start Streamlit frontend:**
-```powershell
-streamlit run frontend/main.py
-```
-
-### 6. Open in Browser
-- **App:** http://localhost:8501
-- **API Docs:** http://localhost:8000/docs
-
----
-
-## 📁 Project Structure
-
-```
-medical-report-explainer/
-├── app/
-│   ├── agents/          # AI agents (extraction, query)
-│   ├── api/             # FastAPI routes
-│   ├── core/            # Config & logging
-│   ├── models/          # Pydantic schemas
-│   ├── services/        # Ollama, ChromaDB, Translation
-│   └── utils/           # PDF parsing helpers
-├── frontend/            # Streamlit UI
-├── data/                # Local storage (gitignored)
-├── tests/               # Unit tests
-├── main.py              # FastAPI entry point
-└── requirements.txt
-```
-
----
-
-## 🧪 Running Tests
-```powershell
-pytest tests/ -v
-```
-
----
-
-## 🔒 Privacy
-
-All processing happens locally on your machine:
-- No data sent to any external server
-- No API keys required
-- Patient data stays on your device
-- Safe for sensitive medical documents
-
----
-
-*Built as an internship project to solve the medical literacy gap for non-English speaking patients in India.*
+## ⚙️ Core Agents
+* `extraction_agent.py`: Handles dynamic document chunking, metadata classification (Blood Test, Lab Report, Radiology), and semantic retrieval.
+* `prescription_agent.py`: Manages the Vision OCR pipeline and multilingual clinical safety formatting.
+* `query_agent.py`: Executes the RAG reasoning loop to provide patient-friendly explanations grounded *only* in the provided text.
