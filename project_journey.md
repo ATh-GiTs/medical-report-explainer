@@ -25,9 +25,9 @@ The real breakthrough was realizing this couldn't just be a standard API wrapper
 
 ---
 
-## 🔧 The "Deepa" Refinements
+## 🔧 The "ENTERPRISE" Refinements
 
-The project reached maturity during the final review phases leading up to the **April 30th internship conclusion.** Feedback from Deepa pushed the system from a *"student project"* to a *"production-ready enterprise tool."* Three massive engineering hurdles were tackled:
+The project reached maturity during the final review phases leading up to the **April 30th internship conclusion.** Feedback from mentor pushed the system from a *"student project"* to a *"production-ready enterprise tool."* Three massive engineering hurdles were tackled:
 
 ### 1. 📄 The 20-Page "Blind Test" — Token Limits
 Real hospitals don't generate neat 1-page PDFs. When faced with massive reports, the system initially struggled.
@@ -53,10 +53,6 @@ By late April, the messy terminal outputs and noisy `position_ids` warnings were
 The tool was rebranded to **Pulse AI: The Medical Explainer.**
 
 It wasn't just a script anymore — it was a **secure, scalable framework** ready for real-world application.
-
----
-
-> *"You built something genuinely impressive here. It requires a lot of strategic thinking to balance cutting-edge LLMs with strict data privacy and clinical safety."*
 
 ---
 
